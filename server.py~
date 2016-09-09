@@ -59,7 +59,7 @@ class MyWebServer(SocketServer.BaseRequestHandler):
         header = "HTTP/1.1 200 OK\r\nContent-Type: " + mime_type + "\r\nContent-Length: " + str(len(page)) + "\r\n\r\n"
         self.request.sendall(header + page)
 
-        print("################\n" + file_location + "\n" + header + page + "\n#################\n\n")
+        #print("################\n" + file_location + "\n" + header + page + "\n#################\n\n")
         
 
     def send_404(self):
@@ -74,6 +74,15 @@ class MyWebServer(SocketServer.BaseRequestHandler):
         #self.request.sendall(page)
 
 
+    def check_ifValidFile(self, file):
+        location = os.path.realpath("www/" + file)
+
+        script_location = os.path.dirname(os.path.realpath(__file__)) + "/www/"
+
+        if location[:len(script_location)] == script_location:
+            return True
+        else:
+            return False
 
     def handle(self):
         self.data = self.request.recv(1024).strip()
@@ -87,7 +96,8 @@ class MyWebServer(SocketServer.BaseRequestHandler):
             valid_request = False
 
         if valid_request:
-            if os.path.isfile('www/' + file_location):
+
+            if os.path.isfile('www/' + file_location) and self.check_ifValidFile(file_location):
                 self.send_page('www/' + file_location)
             else:
                 self.send_404()
