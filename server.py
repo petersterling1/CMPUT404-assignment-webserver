@@ -31,23 +31,22 @@ import os
 class MyWebServer(SocketServer.BaseRequestHandler):	
 
     def get_file_requested(self, data):
-        #Takes the message and parses out and removes the file the client is interested in. Should always be second word in.
+        #Split by space and return the second argument to get the file requested
         data = data.split(" ")
         return data[1]
 
     def get_file_location(self, file):
-        #Gets the location of the file. Should be the same unless it's a directory (ends in /). Then append index.html to the end.
+        #If ending in '/', append .index.html and return it
         last_character = file[-1:]
         if last_character == "/":
             file = file + "index.html"
 
-        #Return file location, remove the slash at the beginning
         return file[1:]
 
     def send_page(self, file_location):
-        #Sends a page to the client.
-
-        #Check if its a .css file. If so, set its mime type to CSS.
+        #Send a page to the client
+        
+        #Assign mime-type, default .html
         try:
             if file_location[-4:] == ".css":
                 mime_type = "text/css"
@@ -56,37 +55,42 @@ class MyWebServer(SocketServer.BaseRequestHandler):
         except:
             mime_type = "text/html"
         
-        #Dump the contents of the file to page.
+        #Read file
         with open (file_location, "r") as page_file:
             page = page_file.read()
 
-        #Generate the header.
+        #Generate header, and then send
         header = "HTTP/1.1 200 OK\r\nContent-Type: " + mime_type + "\r\nContent-Length: " + str(len(page)) + "\r\n\r\n"
-        
-        #Send to client.
         self.request.sendall(header + page)
+        
 
     def send_404(self):
-        #Send a 404 page (page not found)
+        #Send 404 not found page
 
         page = "<html><body><h1>404 - Not Found</h1></body></html>"
 
         header = "HTTP/1.1 404 Not Found\r\nContent-Type: text/html\r\nContent-Length: " + str(len(page)) + "\r\n\r\n"
 
-        #print header and page
         self.request.sendall(header + page)
 
+    def send_redirect(self, file):
+        #If trying to access a directory without a trailing slash, redirect to the location with a trailing slash
 
-    def check_ifValidFile(self, file):
-        #Check to see if the file is inside the www directory. If outside, will return false.
+        header = "HTTP/1.1 302 Found\r\nLocation: http://127.0.0.1:8080/" + file + "/\r\n\r\n"
+
+        self.request.sendall(header)
         
-        #Get the actual location of the www folder on disk.
+
+    def check_ifValidLocation(self, file):
+        #Returns true if is inside the 'www' folder, otherwise return false
+
+        #Get the real path of the file.
         location = os.path.realpath("www/" + file)
 
-        #Get the location of the python script and append the www folder to it.
+        #Get the real path of where the script is located, append www to the end.
         script_location = os.path.dirname(os.path.realpath(__file__)) + "/www/"
 
-        #Check if the file is inside the www directory.
+        #Check if is in the www folder.
         if location[:len(script_location)] == script_location:
             return True
         else:
@@ -95,26 +99,30 @@ class MyWebServer(SocketServer.BaseRequestHandler):
     def handle(self):
         self.data = self.request.recv(1024).strip()
 
-        #Sometimes the server recieves empty messages. If the message can't be parsed, do nothing.
         valid_request = True
 
         try:
-            #Parse the file wanted, and get the location of the file.
+            #Parse the file requested out of the message sent
             file_requested = self.get_file_requested(self.data)
+
+            #Get the file location (add /index.html to the end if requesting a directory)
             file_location = self.get_file_location(file_requested)
         except:
             valid_request = False
 
         if valid_request:
-            #Check to see if the file physically exists and is not outside of the www folder.
-            if os.path.isfile('www/' + file_location) and self.check_ifValidFile(file_location):
-                #If so, send the file to the client.
+
+            if os.path.isdir('www/' + file_location) and self.check_ifValidLocation(file_location):
+                #If this directory exists and client didnt request with a trailing slash, redirect to a trailing slash
+                self.send_redirect(file_location)
+            elif os.path.isfile('www/' + file_location) and self.check_ifValidLocation(file_location):
+                #Otherwise, if it exists, send the actual file
                 self.send_page('www/' + file_location)
             else:
-                #Either not found or is outside of the www directory. Send 404.
+                #Else case: send a 404
                 self.send_404()
                 
-        #Debugging.
+
         print ("Got a request of: %s\n" % self.data)
         
 
