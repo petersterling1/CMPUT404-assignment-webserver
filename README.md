@@ -7,6 +7,10 @@ See requirements.org (plain-text) for a description of the project.
 
 Make a simple webserver.
 
+NOTES
+========================
+Going to /deep will issue a 302 redirect to /deep/, therefore taking a screenshot of the browser at /deep isn't possible. The second firefox screenshot is of /deep/ with the network tab open to indicate that the browser was redirected from /deep to /deep/.
+
 Contributors / Licensing
 ========================
 
